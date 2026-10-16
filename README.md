@@ -64,6 +64,20 @@ So, that's how our Snake game works! It's a fun and simple project for beginners
 
 I hope you found this explanation helpful in understanding how to create a Snake game in Python. Feel free to use this code as a template to create your own games or experiment with adding new features. Thank you for exploring this project, and happy coding!
 
+## How to Run:
+
+Make sure you have Python installed, then run:
+
+```bash
+python main.py
+```
+
+### Controls:
+- **Move**: Arrow Keys (`↑`, `↓`, `←`, `→`) or `W`, `A`, `S`, `D`
+- **Pause / Resume**: Click on-screen buttons or press `P` / `Space`
+- **Start / Restart**: Press `Enter` (Return)
+- **Quit**: Press `Esc` or `Q`
+
 ---
 
-**Note**: This README provides an overview of the project. For detailed code and implementation, please refer to the Python script.
+**Note**: This README provides an overview of the project. For detailed code and implementation, please refer to [main.py](file:///c:/Users/vijay/Downloads/Projects/SnakeGame/main.py).
