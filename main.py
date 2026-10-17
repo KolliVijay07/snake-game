@@ -20,9 +20,26 @@ IMAGE_FILE = os.path.join(BASE_DIR, "snakeimg.gif")
 
 # Grid and Screen Dimensions
 SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 600
+SCREEN_HEIGHT = 650
 GRID_STEP = 20
-BOUNDARY_LIMIT = 290  # Wall collision threshold (-290 to 290)
+
+# Play Area Boundaries
+BOUNDARY_LEFT = -270
+BOUNDARY_RIGHT = 270
+BOUNDARY_BOTTOM = -270
+BOUNDARY_TOP = 210
+
+MAX_X = BOUNDARY_RIGHT - (GRID_STEP // 2)   # 260
+MIN_X = BOUNDARY_LEFT + (GRID_STEP // 2)    # -260
+MAX_Y = BOUNDARY_TOP - (GRID_STEP // 2)     # 200
+MIN_Y = BOUNDARY_BOTTOM + (GRID_STEP // 2)  # -260
+
+# Button & Dashboard Coordinates (positioned in top header outside boundaries)
+PAUSE_BTN_X = 175
+PAUSE_BTN_Y = 268
+RESUME_BTN_X = 238
+RESUME_BTN_Y = 268
+BTN_LABEL_Y = 240
 
 # Speed Configuration (in milliseconds)
 INITIAL_DELAY_MS = 100
@@ -90,6 +107,12 @@ welcome_pen = turtle.Turtle()
 welcome_pen.penup()
 welcome_pen.hideturtle()
 
+# Play Arena Boundary Border Pen
+border_pen = turtle.Turtle()
+border_pen.speed(0)
+border_pen.penup()
+border_pen.hideturtle()
+
 # Game Play Objects
 head = turtle.Turtle()
 head.shape("square")
@@ -106,12 +129,12 @@ food.speed(0)
 food.penup()
 food.hideturtle()
 
-# Heads-Up Display (Scoreboard)
+# Heads-Up Display (Scoreboard) - positioned in top header outside boundary
 score_pen = turtle.Turtle()
 score_pen.speed(0)
 score_pen.penup()
 score_pen.hideturtle()
-score_pen.goto(0, 260)
+score_pen.goto(-65, 252)
 
 # Message Overlay (Game Over / Pause banner)
 overlay_pen = turtle.Turtle()
@@ -119,16 +142,18 @@ overlay_pen.speed(0)
 overlay_pen.penup()
 overlay_pen.hideturtle()
 
-# Buttons (Pause & Resume)
+# Buttons (Pause & Resume) - positioned outside boundary
 pause_button = turtle.Turtle()
 pause_button.shape("circle")
-pause_button.fillcolor("red")
+pause_button.shapesize(1.2, 1.2)
+pause_button.fillcolor("#E74C3C")
 pause_button.penup()
 pause_button.hideturtle()
 
 resume_button = turtle.Turtle()
 resume_button.shape("circle")
-resume_button.fillcolor("red")
+resume_button.shapesize(1.2, 1.2)
+resume_button.fillcolor("#27AE60")
 resume_button.penup()
 resume_button.hideturtle()
 
@@ -138,12 +163,43 @@ button_label_pen.hideturtle()
 
 
 # ---------------------------------------------------------
+# Play Arena Boundary & Visual Frame
+# ---------------------------------------------------------
+def draw_boundary():
+    """Draw the boundary walls enclosing the playable game arena."""
+    border_pen.clear()
+    border_pen.penup()
+    border_pen.pensize(4)
+    border_pen.pencolor("#2C3E50")  # Dark slate boundary line
+    border_pen.fillcolor("#FFFFFF")  # Crisp white arena background
+    border_pen.goto(BOUNDARY_LEFT, BOUNDARY_TOP)
+    border_pen.pendown()
+    border_pen.begin_fill()
+    border_pen.goto(BOUNDARY_RIGHT, BOUNDARY_TOP)
+    border_pen.goto(BOUNDARY_RIGHT, BOUNDARY_BOTTOM)
+    border_pen.goto(BOUNDARY_LEFT, BOUNDARY_BOTTOM)
+    border_pen.goto(BOUNDARY_LEFT, BOUNDARY_TOP)
+    border_pen.end_fill()
+    border_pen.penup()
+
+
+# ---------------------------------------------------------
 # Welcome Screen
 # ---------------------------------------------------------
 def display_welcome_screen():
     """Renders the initial welcome screen with image and instructions."""
     global game_state
     game_state = STATE_WELCOME
+
+    # Clean up gameplay elements from canvas
+    border_pen.clear()
+    score_pen.clear()
+    button_label_pen.clear()
+    pause_button.hideturtle()
+    resume_button.hideturtle()
+    head.hideturtle()
+    food.hideturtle()
+    overlay_pen.clear()
 
     # Register and show image if it exists
     if os.path.exists(IMAGE_FILE):
@@ -157,7 +213,7 @@ def display_welcome_screen():
 
     welcome_pen.clear()
     welcome_pen.color("black")
-    welcome_pen.goto(0, 150)
+    welcome_pen.goto(0, 160)
     welcome_pen.write(
         "Snake Game",
         align="center",
@@ -173,18 +229,18 @@ def display_welcome_screen():
         "5. Click Pause button (or press P / Space) to pause\n"
         "6. Click Resume button (or press P / Space) to resume"
     )
-    welcome_pen.goto(0, -160)
+    welcome_pen.goto(0, -165)
     welcome_pen.write(
         instructions,
         align="center",
-        font=("Lucida Calligraphy", 12, "bold")
+        font=("Lucida Calligraphy", 11, "bold")
     )
 
-    welcome_pen.goto(0, -190)
+    welcome_pen.goto(0, -210)
     welcome_pen.write(
         "Press Enter to start",
         align="center",
-        font=("Lucida Calligraphy", 12, "bold")
+        font=("Lucida Calligraphy", 13, "bold")
     )
 
     screen.update()
@@ -242,15 +298,15 @@ def move():
 # Pause and Resume Handling
 # ---------------------------------------------------------
 def pause_game(x=0, y=0):
-    """Pauses the game loop and shows the pause overlay."""
+    """Pauses the game loop and shows the pause overlay inside the arena."""
     global game_state
     if game_state == STATE_PLAYING:
         game_state = STATE_PAUSED
         overlay_pen.clear()
         overlay_pen.color("#4B0082")  # Indigo
-        overlay_pen.goto(0, 50)
+        overlay_pen.goto(0, 30)
         overlay_pen.write("PAUSED", align="center", font=("Georgia", 36, "bold"))
-        overlay_pen.goto(0, 10)
+        overlay_pen.goto(0, -10)
         overlay_pen.write("Click Resume or Press P / Space", align="center", font=("Georgia", 14, "italic"))
         screen.update()
 
@@ -272,63 +328,78 @@ def toggle_pause():
         resume_game()
 
 
+def handle_screen_click(x, y):
+    """Allow clicking on or around buttons (including their text labels)."""
+    # Pause button click hit-box
+    if (PAUSE_BTN_X - 25 <= x <= PAUSE_BTN_X + 25) and (BTN_LABEL_Y - 8 <= y <= PAUSE_BTN_Y + 20):
+        pause_game()
+    # Resume button click hit-box
+    elif (RESUME_BTN_X - 25 <= x <= RESUME_BTN_X + 25) and (BTN_LABEL_Y - 8 <= y <= RESUME_BTN_Y + 20):
+        resume_game()
+
+
 # ---------------------------------------------------------
-# Food Placement (Grid-Aligned)
+# Food Placement (Grid-Aligned Strictly Within Boundaries)
 # ---------------------------------------------------------
 def generate_food_position():
     """
     Generate a new random position for food snapped to the 20px grid
-    that does not collide with the snake's head or existing body segments.
+    strictly inside the boundaries, not colliding with snake head or segments.
     """
-    # Grid coordinates range from -260 to +260 with 20px step
-    grid_coords = list(range(-260, 280, GRID_STEP))
+    grid_x = list(range(MIN_X, MAX_X + 1, GRID_STEP))
+    grid_y = list(range(MIN_Y, MAX_Y + 1, GRID_STEP))
     occupied = {(int(head.xcor()), int(head.ycor()))}
     for seg in segments:
         occupied.add((int(seg.xcor()), int(seg.ycor())))
 
     # Attempt random selections first
     for _ in range(100):
-        new_x = random.choice(grid_coords)
-        new_y = random.choice(grid_coords)
+        new_x = random.choice(grid_x)
+        new_y = random.choice(grid_y)
         if (new_x, new_y) not in occupied:
             return new_x, new_y
 
-    # Fallback default
+    # Fallback to scanning all available cells
+    available = [(x, y) for x in grid_x for y in grid_y if (x, y) not in occupied]
+    if available:
+        return random.choice(available)
+
     return 0, 100
 
 
 # ---------------------------------------------------------
-# UI & Scoreboard Updates
+# UI & Scoreboard Updates (Outside Boundaries in Header)
 # ---------------------------------------------------------
 def update_score_display():
-    """Render the current score and high score."""
+    """Render the current score and high score in the top header outside the boundary."""
     score_pen.clear()
-    score_pen.color("black")
+    score_pen.color("#1A252F")
+    score_pen.goto(-65, 252)
     score_pen.write(
-        f"Score : {score}   High Score : {high_score}",
+        f"Score : {score}    High Score : {high_score}",
         align="center",
-        font=("Georgia", 20, "bold")
+        font=("Georgia", 17, "bold")
     )
 
 
 def draw_buttons():
-    """Draw and setup interactive Pause and Resume buttons."""
+    """Draw and setup interactive Pause and Resume buttons outside boundaries."""
     # Pause button
-    pause_button.goto(260, 275)
+    pause_button.goto(PAUSE_BTN_X, PAUSE_BTN_Y)
     pause_button.showturtle()
     pause_button.onclick(pause_game)
 
     # Resume button
-    resume_button.goto(260, 235)
+    resume_button.goto(RESUME_BTN_X, RESUME_BTN_Y)
     resume_button.showturtle()
     resume_button.onclick(resume_game)
 
-    # Labels
+    # Button Labels
     button_label_pen.clear()
-    button_label_pen.color("black")
-    button_label_pen.goto(260, 258)
+    button_label_pen.color("#2C3E50")
+    button_label_pen.goto(PAUSE_BTN_X, BTN_LABEL_Y)
     button_label_pen.write("Pause", align="center", font=("Georgia", 10, "bold"))
-    button_label_pen.goto(260, 218)
+    button_label_pen.goto(RESUME_BTN_X, BTN_LABEL_Y)
     button_label_pen.write("Resume", align="center", font=("Georgia", 10, "bold"))
 
 
@@ -347,10 +418,10 @@ def trigger_game_over():
 
     # Render Game Over text with screen update so it is clearly visible
     overlay_pen.clear()
-    overlay_pen.color("red")
-    overlay_pen.goto(0, 50)
-    overlay_pen.write("Game Over !", align="center", font=("Arial", 46, "bold"))
-    overlay_pen.goto(0, 10)
+    overlay_pen.color("#D32F2F")
+    overlay_pen.goto(0, 30)
+    overlay_pen.write("Game Over !", align="center", font=("Arial", 42, "bold"))
+    overlay_pen.goto(0, -10)
     overlay_pen.color("#333333")
     overlay_pen.write("Restarting in a moment (or Press Enter)...", align="center", font=("Georgia", 13, "bold"))
     screen.update()
@@ -367,6 +438,9 @@ def reset_game():
         return
 
     overlay_pen.clear()
+
+    # Redraw boundary frame to guarantee clean arena view
+    draw_boundary()
 
     # Proper memory cleanup for turtle segments
     for seg in segments:
@@ -401,12 +475,12 @@ def game_tick():
     global score, high_score, current_delay_ms
 
     if game_state == STATE_PLAYING:
-        # 1. Check Wall Collision
+        # 1. Check Wall Collision against boundaries
         if (
-            head.xcor() > BOUNDARY_LIMIT
-            or head.xcor() < -BOUNDARY_LIMIT
-            or head.ycor() > BOUNDARY_LIMIT
-            or head.ycor() < -BOUNDARY_LIMIT
+            head.xcor() > MAX_X
+            or head.xcor() < MIN_X
+            or head.ycor() > MAX_Y
+            or head.ycor() < MIN_Y
         ):
             trigger_game_over()
             return  # Stop tick; reset_game will resume ontimer
@@ -477,7 +551,10 @@ def start_game():
 
     clear_welcome_screen()
 
-    # Load high score
+    # Draw boundary walls around the play area
+    draw_boundary()
+
+    # Load high score and display in the header
     high_score = load_high_score()
     update_score_display()
 
@@ -497,6 +574,7 @@ def start_game():
 
 # ---------------------------------------------------------
 # Key Bindings and Entry Point
+# ---------------------------------------------------------
 def handle_enter():
     """Handle Enter key depending on current game state."""
     if game_state == STATE_WELCOME:
@@ -514,7 +592,7 @@ def quit_game():
 
 
 def setup_controls():
-    """Configure keyboard listeners for controls and navigation."""
+    """Configure keyboard and mouse listeners for controls and navigation."""
     screen.listen()
 
     # Movement controls (Arrow keys)
@@ -540,6 +618,9 @@ def setup_controls():
     screen.onkey(toggle_pause, "p")
     screen.onkey(toggle_pause, "P")
     screen.onkey(toggle_pause, "space")
+
+    # Mouse click listener (for buttons and labels)
+    screen.onclick(handle_screen_click)
 
     # Clean exit
     screen.onkey(quit_game, "Escape")

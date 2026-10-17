@@ -44,13 +44,13 @@ We implement functions to handle user input for controlling the snake's directio
 
 The game runs in an infinite loop, continuously updating the screen. The snake moves according to its direction, and we check for collisions with walls, food, and itself.
 
-## 11. Collision Detection:
+## 11. Collision Detection & Bounded Arena:
 
-We have collision detection mechanisms in place. When the snake collides with the wall, itself, or eats the food, we appropriately handle these scenarios.
+We have visual boundary walls enclosing the playable game arena. When the snake collides with any of the four walls or collides with its own body, a 'Game Over' sequence is triggered. The score and interactive controls (Pause and Resume buttons) are placed in a dedicated header bar above and outside the arena boundaries to prevent any overlap with the snake.
 
 ## 12. Scoring:
 
-We keep track of the player's score, incrementing it when the snake eats food, and updating the high score when a new high score is achieved.
+We keep track of the player's score, incrementing it when the snake eats food, and updating the high score when a new high score is achieved. Food spawns strictly within the arena bounds on a 20px grid.
 
 ## 13. Ending the Game:
 
